@@ -1,0 +1,3 @@
+*IDN?
+FUNC?
+MEAS?

@@ -1,0 +1,32 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25 },
+  "configurePresets": [
+    {
+      "name": "w32-base",
+      "description": "Base preset with stuff common across platforms",
+      "hidden": true,
+      "generator": "NMake Makefiles JOM",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "w32-debug",
+      "inherits": ["w32-base"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS_DEBUG": "/Zi",
+        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/DEBUG"
+      }
+    },
+    {
+      "name": "w32-release",
+      "inherits": ["w32-base"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ]
+}

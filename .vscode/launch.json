@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "xdm1041-gui.exe",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "G:/dev/install.debug/bin/xdm1041-gui.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": []
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build (debug)",
+			"command": "../.vscode/build-debug.bat",
+			"args": [
+				"install"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/build.debug"
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
+	]
+}
