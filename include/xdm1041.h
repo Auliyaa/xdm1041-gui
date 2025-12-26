@@ -32,8 +32,12 @@ public:
   bool set_speed(speed_e);
   double continuityThreshold();
 
+  QString lastError() const;
+  void clearLastError();
+
 private:
   QSerialPort _ser;
+  QString _lastError;
 
   bool write(const QByteArray&, int timeo=1000);
   QString read(int timeo=1000);

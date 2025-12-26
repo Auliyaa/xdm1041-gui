@@ -1,5 +1,6 @@
 #include <xdm1041.h>
 
+#include <QApplication>
 #include <QSerialPortInfo>
 #include <QDebug>
 
@@ -58,21 +59,21 @@ QString xdm1041_t::idn()
 {
   static const QByteArray cmd{"*IDN?\r\n"};
   if (write(cmd)) return read();
-  return QString{};
+  return "";
 }
 
 QString xdm1041_t::func()
 {
   static const QByteArray cmd{"FUNC?\r\n"};
   if (write(cmd)) return read().remove("\"");
-  return QString{};
+  return "";
 }
 
 QString xdm1041_t::meas()
 {
   static const QByteArray cmd{"MEAS?\r\n"};
   if (write(cmd)) return read().remove("\"");
-  return QString{};
+  return "";
 }
 
 double xdm1041_t::meas_num()
@@ -113,23 +114,44 @@ double xdm1041_t::continuityThreshold()
   return NAN;
 }
 
+QString xdm1041_t::lastError() const
+{
+  return _lastError;
+}
+
+void xdm1041_t::clearLastError()
+{
+  _lastError = "";
+}
+
 bool xdm1041_t::write(const QByteArray& d, int timeo)
 {
+  using clock = std::chrono::steady_clock;
+
+  const auto tgt_timeo = clock::now() + std::chrono::milliseconds(timeo);
   _ser.write(d);
-  if (!_ser.waitForBytesWritten(timeo))
+  while (clock::now()<tgt_timeo)
   {
-    qCritical() << "xdm1041_t::write() timeout";
-    return false;
+    if (_ser.waitForBytesWritten(10)) return true;
+    QApplication::processEvents(); // avoid hanging the whole event loop
   }
-  return true;
+  _lastError = "xdm1041_t::write() timeout";
+  return false;
 }
 
 QString xdm1041_t::read(int timeo)
 {
-  if (!_ser.waitForReadyRead(timeo))
+  using clock = std::chrono::steady_clock;
+
+  const auto tgt_timeo = clock::now() + std::chrono::milliseconds(timeo);
+  while (clock::now()<tgt_timeo)
   {
-    return QByteArray{};
+    if (_ser.waitForReadyRead(10) && _ser.canReadLine())
+    {
+      return QString::fromLatin1(_ser.readLine()).trimmed();
+    }
+    QApplication::processEvents(); // avoid hanging the whole event loop
   }
-  if (!_ser.canReadLine()) return QByteArray{};
-  return QString::fromLatin1(_ser.readLine()).trimmed();
+  _lastError = "xdm1041_t::read() timeout";
+  return QByteArray{};
 }

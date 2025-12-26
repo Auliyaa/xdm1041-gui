@@ -14,7 +14,7 @@
    <string>Form</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">background-color: rgb(0, 85, 0);
+   <string notr="true">background-color: rgb(0, 0, 0);
 font: 700 18pt &quot;Comfortaa&quot;;
 </string>
   </property>
@@ -22,7 +22,7 @@ font: 700 18pt &quot;Comfortaa&quot;;
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>CACA</string>
+      <string>DMM</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignmentFlag::AlignCenter</set>

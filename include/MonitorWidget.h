@@ -30,7 +30,6 @@ private:
   Ui::MonitorWidget* _ui;
   QString _port;
   QTimer _timer;
-  int _timerCounter{0};
   xdm1041_t _xdm1041;
   QString _oldFunc;
   QLineSeries* _series{nullptr};

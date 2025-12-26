@@ -12,7 +12,7 @@ MonitorWidget::MonitorWidget(QWidget* parent, Qt::WindowFlags f)
 {
   _ui->setupUi(this);
 
-  _timer.setInterval(250);
+  _timer.setInterval(300);
   connect(&_timer, &QTimer::timeout, this, &MonitorWidget::refreshTimeout);
   _timer.start();
 
@@ -22,7 +22,7 @@ MonitorWidget::MonitorWidget(QWidget* parent, Qt::WindowFlags f)
   _ui->chart->chart()->createDefaultAxes();
   _ui->chart->chart()->legend()->hide();
   _ui->chart->setRenderHint(QPainter::Antialiasing, true);
-  _ui->chart->chart()->setBackgroundBrush(QColor(0,85,0));
+  _ui->chart->chart()->setBackgroundBrush(QColor(0,0,0));
 
   _series->setBrush(QColor(215,195,213));
   QPen p;
@@ -127,17 +127,24 @@ double transformUnit(const double v, QString& unit)
 
 void MonitorWidget::refreshTimeout()
 {
-  if (++_timerCounter % 10 == 0 || !_xdm1041.isOpen())
+  if (!_xdm1041.isOpen())
   {
-    _timerCounter = 0;
-    _xdm1041.close();
     _xdm1041.open(_port);
   }
 
   // fetch values
+  _xdm1041.clearLastError();
   const auto func = _xdm1041.func();
   const auto meas = _xdm1041.meas_num();
   const auto continuityThreshold = _xdm1041.continuityThreshold();
+  if (!_xdm1041.lastError().isEmpty() || funcName(func).isEmpty())
+  { // an error ocurred. stop here and let the code retry on next timeout
+    // note: in some cases, we got no error but the returned function does not correspond to anything.
+    //       consider this as an error and reset the DMM anyway
+    qCritical() << _xdm1041.lastError();
+    _xdm1041.close();
+    return;
+  }
 
   if (func != _oldFunc)
   { // func changed: clear buffers
