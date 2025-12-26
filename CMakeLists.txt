@@ -80,7 +80,7 @@ target_link_libraries(xdm1041-gui
 )
 
 set_target_properties(xdm1041-gui PROPERTIES
-  WIN32_EXECUTABLE OFF
+  WIN32_EXECUTABLE ON
 )
 
 # --------------------------------------
