@@ -13,9 +13,21 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: rgb(0, 85, 0);
+font: 700 18pt &quot;Comfortaa&quot;;
+</string>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="label"/>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>CACA</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QChartView" name="chart"/>

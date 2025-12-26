@@ -11,6 +11,7 @@ MonitorWidget::MonitorWidget(QWidget* parent, Qt::WindowFlags f)
     _ui(new Ui::MonitorWidget)
 {
   _ui->setupUi(this);
+
   _timer.setInterval(250);
   connect(&_timer, &QTimer::timeout, this, &MonitorWidget::refreshTimeout);
   _timer.start();
@@ -21,12 +22,23 @@ MonitorWidget::MonitorWidget(QWidget* parent, Qt::WindowFlags f)
   _ui->chart->chart()->createDefaultAxes();
   _ui->chart->chart()->legend()->hide();
   _ui->chart->setRenderHint(QPainter::Antialiasing, true);
+  _ui->chart->chart()->setBackgroundBrush(QColor(0,85,0));
+
+  _series->setBrush(QColor(215,195,213));
+  QPen p;
+  p.setColor(QColor(215,195,213));
+  p.setWidth(2);
+  _series->setPen(p);
   for (auto axe : _ui->chart->chart()->axes())
   {
     axe->setGridLineVisible(false);
+    axe->setLinePen(QColor("white"));
     // axe->setLabelsVisible(false);
+    axe->setLabelsColor(QColor("white"));
+
   }
   _ui->chart->chart()->axes(Qt::Horizontal).first()->setRange(0,MAX_VALUES);
+  _ui->chart->chart()->axes(Qt::Horizontal).first()->setLabelsVisible(false);
 }
 
 MonitorWidget::~MonitorWidget()
@@ -40,7 +52,7 @@ void MonitorWidget::setRefreshInterval(int i)
 
 void MonitorWidget::setPort(const QString& p)
 {
-  _xdm1041.open(p);
+  _port = p;
 }
 
 QString funcUnit(const QString& func)
@@ -115,7 +127,12 @@ double transformUnit(const double v, QString& unit)
 
 void MonitorWidget::refreshTimeout()
 {
-  if (!_xdm1041.isOpen()) return;
+  if (++_timerCounter % 10 == 0 || !_xdm1041.isOpen())
+  {
+    _timerCounter = 0;
+    _xdm1041.close();
+    _xdm1041.open(_port);
+  }
 
   // fetch values
   const auto func = _xdm1041.func();
