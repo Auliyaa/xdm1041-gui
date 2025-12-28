@@ -21,14 +21,12 @@ public:
   virtual ~MonitorWidget();
 
   void setRefreshInterval(int i);
-  void setPort(const QString& p);
 
 protected:
   void refreshTimeout();
 
 private:
   Ui::MonitorWidget* _ui;
-  QString _port;
   QTimer _timer;
   xdm1041_t _xdm1041;
   QString _oldFunc;

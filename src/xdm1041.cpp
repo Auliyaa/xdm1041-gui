@@ -16,7 +16,11 @@ QStringList xdm1041_t::listCOMPorts()
     if (info.vendorIdentifier() == 0x1A86 && 
         info.productIdentifier() == 0x7523)
     {
+#ifdef __linux__
+  res.append(info.systemLocation());
+#else
       res.append(info.portName());
+#endif
     }
   }
 

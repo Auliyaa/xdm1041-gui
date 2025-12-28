@@ -3,19 +3,27 @@
 	"tasks": [
 		{
 			"label": "build (debug)",
-			"command": "../.vscode/build-debug.bat",
 			"args": [
 				"install"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}/build.debug"
 			},
-			"problemMatcher": [
-				"$msCompile"
-			],
 			"group": {
 				"kind": "build",
 				"isDefault": true
+			},
+			"windows": {
+				"command": "../.vscode/build-debug.bat",
+				"problemMatcher": [
+					"$msCompile"
+				]
+			},
+			"linux": {
+				"command": "make",
+				"problemMatcher": [
+					"$gcc"
+				]
 			}
 		}
 	]

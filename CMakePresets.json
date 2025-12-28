@@ -27,6 +27,44 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "unix-base",
+      "description": "Base preset with stuff common across platforms",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "auliyaa-linux"
+      }
+    },
+    {
+      "name": "unix-debug",
+      "inherits": ["unix-base"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "WITH_UNIT_TESTS": "ON",
+        "WITH_SAMPLES": "ON",
+        "WITH_CLANG_TIDY": "ON"
+      }
+    },
+    {
+      "name": "unix-relwithdeb",
+      "inherits": ["unix-base"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "WITH_UNIT_TESTS": "ON",
+        "WITH_SAMPLES": "ON"
+      }
+    },
+    {
+      "name": "unix-release",
+      "inherits": ["unix-base"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "WITH_UNIT_TESTS": "OFF",
+        "WITH_SAMPLES": "ON"
+      }
     }
   ]
 }

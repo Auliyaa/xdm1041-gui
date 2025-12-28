@@ -4,7 +4,7 @@
 
 #include "ui_MonitorWidget.h"
 
-static constexpr const size_t MAX_VALUES = 50;
+static constexpr const qulonglong MAX_VALUES = 50;
 
 MonitorWidget::MonitorWidget(QWidget* parent, Qt::WindowFlags f)
   : QWidget(parent, f),
@@ -37,7 +37,7 @@ MonitorWidget::MonitorWidget(QWidget* parent, Qt::WindowFlags f)
     axe->setLabelsColor(QColor("white"));
 
   }
-  _ui->chart->chart()->axes(Qt::Horizontal).first()->setRange(0,MAX_VALUES);
+  _ui->chart->chart()->axes(Qt::Horizontal).first()->setRange(0, MAX_VALUES);
   _ui->chart->chart()->axes(Qt::Horizontal).first()->setLabelsVisible(false);
 }
 
@@ -48,11 +48,6 @@ MonitorWidget::~MonitorWidget()
 void MonitorWidget::setRefreshInterval(int i)
 {
   _timer.setInterval(i);
-}
-
-void MonitorWidget::setPort(const QString& p)
-{
-  _port = p;
 }
 
 QString funcUnit(const QString& func)
@@ -129,7 +124,27 @@ void MonitorWidget::refreshTimeout()
 {
   if (!_xdm1041.isOpen())
   {
-    _xdm1041.open(_port);
+    // detect port
+    const auto ports = xdm1041_t::listCOMPorts();
+    if (ports.isEmpty())
+    {
+      qCritical() << "could not detect port for DMM";
+      return;
+    }
+    for (const auto& port : ports)
+    {
+      qDebug() << "opening port " << port;
+      if (!_xdm1041.open(port))
+      {
+        qCritical() << "failed to open port: " << port;
+#ifdef __linux__
+        qCritical() << "please make sure you have proper rights and are in the right group:";
+        qCritical() << "$ stat " << port;
+        qCritical() << "$ sudo gpasswd -a ${USER} <group>";
+#endif
+      }
+      else break;
+    }
   }
 
   // fetch values
