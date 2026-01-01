@@ -39,6 +39,10 @@ private:
   QSerialPort _ser;
   QString _lastError;
 
+  QByteArray _rx_buffer;
+  double _cached_cont_thre = std::numeric_limits<double>::quiet_NaN();
+
+  void drainInput();
   bool write(const QByteArray&, int timeo=1000);
   QString read(int timeo=1000);
 };

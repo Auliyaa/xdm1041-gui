@@ -2,11 +2,14 @@
 
 #include <QApplication>
 #include <QSerialPortInfo>
-#include <QDebug>
+#include <chrono>
+#include <cmath>
+#include <limits>
 
 QStringList xdm1041_t::listCOMPorts()
 {
   QStringList res;
+
   for (const auto& info : QSerialPortInfo::availablePorts())
   {
     if (!info.hasVendorIdentifier() || !info.hasProductIdentifier())
@@ -34,18 +37,24 @@ xdm1041_t::xdm1041_t(QObject* parent)
 
 xdm1041_t::~xdm1041_t()
 {
+  close();
 }
 
 bool xdm1041_t::open(const QString& port)
 {
   if (isOpen()) close();
+
+  _cached_cont_thre = std::numeric_limits<double>::quiet_NaN();
+  _rx_buffer.clear();
+  _lastError.clear();
+
   _ser.setPortName(port);
   _ser.setBaudRate(QSerialPort::Baud115200);
   _ser.setDataBits(QSerialPort::Data8);
   _ser.setParity(QSerialPort::NoParity);
   _ser.setStopBits(QSerialPort::OneStop);
   _ser.setFlowControl(QSerialPort::NoFlowControl);
-  return _ser.open(QIODevice::QIODevice::ReadWrite);
+  return _ser.open(QIODevice::ReadWrite);
 }
 
 bool xdm1041_t::isOpen() const
@@ -55,67 +64,10 @@ bool xdm1041_t::isOpen() const
 
 void xdm1041_t::close()
 {
-  if (!isOpen()) return;
+  if (!_ser.isOpen()) return;
+
   _ser.close();
-}
-
-QString xdm1041_t::idn()
-{
-  static const QByteArray cmd{"*IDN?\r\n"};
-  if (write(cmd)) return read();
-  return "";
-}
-
-QString xdm1041_t::func()
-{
-  static const QByteArray cmd{"FUNC?\r\n"};
-  if (write(cmd)) return read().remove("\"");
-  return "";
-}
-
-QString xdm1041_t::meas()
-{
-  static const QByteArray cmd{"MEAS?\r\n"};
-  if (write(cmd)) return read().remove("\"");
-  return "";
-}
-
-double xdm1041_t::meas_num()
-{
-  static const QByteArray cmd{"MEAS?\r\n"};
-  if (write(cmd)) return read().remove("\"").toDouble();
-  return NAN;
-}
-
-xdm1041_t::speed_e xdm1041_t::speed()
-{
-  static const QByteArray cmd{"RATE?\r\n"};
-  if (write(cmd))
-  {
-    const auto r = read();
-    if (r.startsWith("S")) return speed_e::speed_slow;
-    if (r.startsWith("M")) return speed_e::speed_medium;
-    if (r.startsWith("F")) return speed_e::speed_fast;
-  }
-  return speed_e::speed_slow;
-}
-
-bool xdm1041_t::set_speed(speed_e s)
-{
-  switch(s)
-  {
-    case decltype(s)::speed_slow: return write("RATE S\r\n");
-    case decltype(s)::speed_medium: return write("RATE M\r\n");
-    case decltype(s)::speed_fast: return write("RATE F\r\n");
-  }
-  return true;
-}
-
-double xdm1041_t::continuityThreshold()
-{
-  static const QByteArray cmd{"CONT:THRE?\r\n"};
-  if (write(cmd)) return read().toDouble();
-  return NAN;
+  _rx_buffer.clear();
 }
 
 QString xdm1041_t::lastError() const
@@ -125,37 +77,170 @@ QString xdm1041_t::lastError() const
 
 void xdm1041_t::clearLastError()
 {
-  _lastError = "";
+  _lastError.clear();
 }
 
-bool xdm1041_t::write(const QByteArray& d, int timeo)
+void xdm1041_t::drainInput()
 {
-  using clock = std::chrono::steady_clock;
+  if (!_ser.isOpen())
+    return;
 
-  const auto tgt_timeo = clock::now() + std::chrono::milliseconds(timeo);
-  _ser.write(d);
-  while (clock::now()<tgt_timeo)
+  while (_ser.bytesAvailable() > 0)
+    _ser.readAll();
+
+  _rx_buffer.clear();
+}
+
+bool xdm1041_t::write(const QByteArray& d, int)
+{
+  if (!_ser.isOpen())
   {
-    if (_ser.waitForBytesWritten(10)) return true;
-    QApplication::processEvents(); // avoid hanging the whole event loop
+    _lastError = "serial port not open";
+    return false;
   }
-  _lastError = "xdm1041_t::write() timeout";
-  return false;
+
+  drainInput();
+
+  const auto written = _ser.write(d);
+  if (written != d.size())
+  {
+    _lastError = "short write to serial port";
+    return false;
+  }
+
+  if (!_ser.waitForBytesWritten(100))
+  {
+    _lastError = "write timeout";
+    return false;
+  }
+
+  return true;
 }
 
 QString xdm1041_t::read(int timeo)
 {
   using clock = std::chrono::steady_clock;
+  const auto deadline = clock::now() + std::chrono::milliseconds(timeo);
 
-  const auto tgt_timeo = clock::now() + std::chrono::milliseconds(timeo);
-  while (clock::now()<tgt_timeo)
+  while (clock::now() < deadline)
   {
-    if (_ser.waitForReadyRead(10) && _ser.canReadLine())
+    if (_ser.waitForReadyRead(20))
     {
-      return QString::fromLatin1(_ser.readLine()).trimmed();
+      _rx_buffer += _ser.readAll();
+
+      const auto eol = _rx_buffer.indexOf('\n');
+      if (eol >= 0)
+      {
+        const auto line = _rx_buffer.left(eol);
+        _rx_buffer.remove(0, eol + 1);
+
+        const auto res = QString::fromLatin1(line).trimmed();
+        return res;
+      }
     }
-    QApplication::processEvents(); // avoid hanging the whole event loop
+
+    QApplication::processEvents();
   }
+
   _lastError = "xdm1041_t::read() timeout";
-  return QByteArray{};
+  return {};
+}
+
+QString xdm1041_t::idn()
+{
+  static const QByteArray cmd{"*IDN?\r\n"};
+  if (!write(cmd))
+    return {};
+
+  return read();
+}
+
+QString xdm1041_t::func()
+{
+  static const QByteArray cmd{"FUNC?\r\n"};
+  if (!write(cmd))
+    return {};
+
+  const auto r = read().remove('"');
+  if (r.isEmpty())
+    _lastError = "invalid FUNC? reply";
+
+  return r;
+}
+
+QString xdm1041_t::meas()
+{
+  static const QByteArray cmd{"MEAS?\r\n"};
+  if (!write(cmd))
+    return {};
+
+  return read().remove('"');
+}
+
+double xdm1041_t::meas_num()
+{
+  static const QByteArray cmd{"MEAS?\r\n"};
+  if (!write(cmd))
+    return NAN;
+
+  const auto r = read().remove('"');
+  bool ok = false;
+  const auto v = r.toDouble(&ok);
+
+  if (!ok)
+  {
+    _lastError = "invalid MEAS? reply: " + r;
+    return NAN;
+  }
+
+  return v;
+}
+
+xdm1041_t::speed_e xdm1041_t::speed()
+{
+  static const QByteArray cmd{"RATE?\r\n"};
+  if (!write(cmd))
+    return speed_slow;
+
+  const auto r = read();
+  if (r.startsWith("S")) return speed_slow;
+  if (r.startsWith("M")) return speed_medium;
+  if (r.startsWith("F")) return speed_fast;
+
+  _lastError = "invalid RATE? reply";
+  return speed_slow;
+}
+
+bool xdm1041_t::set_speed(speed_e s)
+{
+  switch (s)
+  {
+    case speed_slow:   return write("RATE S\r\n");
+    case speed_medium: return write("RATE M\r\n");
+    case speed_fast:   return write("RATE F\r\n");
+  }
+  return false;
+}
+
+double xdm1041_t::continuityThreshold()
+{
+  if (!std::isnan(_cached_cont_thre))
+    return _cached_cont_thre;
+
+  static const QByteArray cmd{"CONT:THRE?\r\n"};
+  if (!write(cmd))
+    return NAN;
+
+  const auto r = read();
+  bool ok = false;
+  const auto v = r.toDouble(&ok);
+
+  if (!ok)
+  {
+    _lastError = "invalid CONT:THRE? reply";
+    return NAN;
+  }
+
+  _cached_cont_thre = v;
+  return v;
 }
